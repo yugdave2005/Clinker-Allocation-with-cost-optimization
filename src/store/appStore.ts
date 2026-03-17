@@ -27,7 +27,10 @@ interface AppState {
 
   // UI
   selectedNode: Location | null;
+  selectedNodeCode: string | null;
   hoveredLine: AllocationEntry | null;
+  routesLoadedCount: number;
+  routesTotalCount: number;
 
   // Actions
   setActiveMode: (mode: 'AUTO' | 'MANUAL') => void;
@@ -47,7 +50,11 @@ interface AppState {
   setCurrentResult: (result: PSOResult | null) => void;
   addRunHistory: (run: AllocationRun) => void;
   setSelectedNode: (node: Location | null) => void;
+  setSelectedNodeCode: (code: string | null) => void;
   setHoveredLine: (line: AllocationEntry | null) => void;
+  incrementRoutesLoaded: () => void;
+  setRoutesTotalCount: (count: number) => void;
+  resetRoutesLoaded: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -75,7 +82,10 @@ export const useAppStore = create<AppState>((set) => ({
 
   // UI
   selectedNode: null,
+  selectedNodeCode: null,
   hoveredLine: null,
+  routesLoadedCount: 0,
+  routesTotalCount: 0,
 
   // Actions
   setActiveMode: (mode) => set({ activeMode: mode }),
@@ -98,5 +108,9 @@ export const useAppStore = create<AppState>((set) => ({
   addRunHistory: (run) =>
     set((state) => ({ runHistory: [run, ...state.runHistory].slice(0, 10) })),
   setSelectedNode: (node) => set({ selectedNode: node }),
+  setSelectedNodeCode: (code) => set({ selectedNodeCode: code }),
   setHoveredLine: (line) => set({ hoveredLine: line }),
+  incrementRoutesLoaded: () => set((state) => ({ routesLoadedCount: state.routesLoadedCount + 1 })),
+  setRoutesTotalCount: (count) => set({ routesTotalCount: count }),
+  resetRoutesLoaded: () => set({ routesLoadedCount: 0, routesTotalCount: 0 }),
 }));

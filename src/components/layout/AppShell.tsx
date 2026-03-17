@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { formatCurrency, formatNumber } from '../../lib/utils';
 import { DollarSign, Factory, Truck, Package, TrendingDown } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Dashboard KPI Card subcomponent
 const KPICard: React.FC<{ title: string; value: number | null; total: number | null; icon: React.ReactNode; color: string }> = ({
@@ -37,6 +37,10 @@ const KPICard: React.FC<{ title: string; value: number | null; total: number | n
 export const AppShell: React.FC = () => {
   const { activeTab, currentResult, runHistory } = useAppStore();
 
+  const operatingTotal = currentResult 
+    ? currentResult.costBreakdown.production + currentResult.costBreakdown.transport + currentResult.costBreakdown.inventory
+    : null;
+
   return (
     <div className="h-screen flex flex-col bg-slate-900 text-slate-100 overflow-hidden">
       <TabBar />
@@ -58,30 +62,30 @@ export const AppShell: React.FC = () => {
               {/* KPI Row */}
               <div className="grid grid-cols-4 gap-4">
                 <KPICard
-                  title="Total Cost"
-                  value={currentResult?.bestCost ?? null}
-                  total={currentResult?.bestCost ?? null}
+                  title="Total Operating Cost"
+                  value={operatingTotal}
+                  total={operatingTotal}
                   icon={<DollarSign className="w-4 h-4 text-violet-400" />}
                   color="bg-violet-500/10"
                 />
                 <KPICard
                   title="Production Cost"
                   value={currentResult?.costBreakdown.production ?? null}
-                  total={currentResult?.bestCost ?? null}
+                  total={operatingTotal}
                   icon={<Factory className="w-4 h-4 text-orange-400" />}
                   color="bg-orange-500/10"
                 />
                 <KPICard
                   title="Transport Cost"
                   value={currentResult?.costBreakdown.transport ?? null}
-                  total={currentResult?.bestCost ?? null}
+                  total={operatingTotal}
                   icon={<Truck className="w-4 h-4 text-blue-400" />}
                   color="bg-blue-500/10"
                 />
                 <KPICard
                   title="Inventory Cost"
                   value={currentResult?.costBreakdown.inventory ?? null}
-                  total={currentResult?.bestCost ?? null}
+                  total={operatingTotal}
                   icon={<Package className="w-4 h-4 text-emerald-400" />}
                   color="bg-emerald-500/10"
                 />
@@ -100,41 +104,46 @@ export const AppShell: React.FC = () => {
               {/* Allocation Table */}
               <AllocationTable />
 
-              {/* Inventory Profile + Run History */}
+              {/* Volume by Transport Mode + Run History */}
               <div className="grid grid-cols-5 gap-4">
-                {/* Inventory Profile Chart */}
+                {/* Volume Profile Chart */}
                 <div className="col-span-3">
                   <Card>
-                    <CardHeader><CardTitle>Inventory Profile</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Volume by Transport Mode</CardTitle></CardHeader>
                     <CardContent>
                       {currentResult ? (
                         <ResponsiveContainer width="100%" height={250}>
-                          <LineChart data={(() => {
-                            const byPeriod: Record<number, Record<string, number>> = {};
-                            currentResult.inventoryPlan.forEach(s => {
-                              if (!byPeriod[s.period]) byPeriod[s.period] = { period: s.period } as any;
-                              byPeriod[s.period][s.locationCode] = s.closingInv;
+                          {(() => {
+                            let road = 0, rail = 0, bulk = 0;
+                            currentResult.allocationPlan.forEach(a => {
+                              if (a.modeCode === 'ROAD') road += a.quantityMt;
+                              if (a.modeCode === 'RAIL') rail += a.quantityMt;
+                              if (a.modeCode === 'BULK') bulk += a.quantityMt;
                             });
-                            return Object.values(byPeriod);
-                          })()}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                            <XAxis dataKey="period" stroke="#94a3b8" fontSize={11} />
-                            <YAxis stroke="#94a3b8" fontSize={11} />
-                            <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }} />
-                            {currentResult.inventoryPlan
-                              .reduce((acc, s) => acc.includes(s.locationCode) ? acc : [...acc, s.locationCode], [] as string[])
-                              .slice(0, 10)
-                              .map((code, i) => (
-                                <Line
-                                  key={code}
-                                  type="monotone"
-                                  dataKey={code}
-                                  stroke={code.startsWith('IU') ? `hsl(${25 + i * 8}, 80%, 55%)` : `hsl(${210 + i * 8}, 80%, 55%)`}
-                                  strokeWidth={1.5}
-                                  dot={false}
+                            const data = [
+                              { name: 'ROAD', value: road, color: '#f97316' },
+                              { name: 'RAIL', value: rail, color: '#3b82f6' },
+                              { name: 'BULK', value: bulk, color: '#22c55e' }
+                            ].filter(d => d.value > 0);
+
+                            return (
+                              <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                                <Tooltip 
+                                  cursor={{ fill: '#334155', opacity: 0.4 }}
+                                  contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '13px' }}
+                                  formatter={(v: number) => [`${formatNumber(v)} MT`, 'Volume']}
                                 />
-                              ))}
-                          </LineChart>
+                                <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                                  {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            );
+                          })()}
                         </ResponsiveContainer>
                       ) : (
                         <div className="flex items-center justify-center h-48 text-slate-500 text-sm">No data yet</div>

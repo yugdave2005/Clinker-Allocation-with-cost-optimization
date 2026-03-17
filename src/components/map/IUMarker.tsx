@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import type { Location } from '../../pso/types';
@@ -9,7 +9,7 @@ interface Props {
   location: Location;
 }
 
-const iuIcon = (code: string) =>
+const createIUIcon = (code: string, isSelected: boolean, isFaded: boolean) =>
   L.divIcon({
     className: 'custom-iu-marker',
     html: `<div style="
@@ -21,26 +21,39 @@ const iuIcon = (code: string) =>
       font-weight: 700;
       font-family: 'JetBrains Mono', monospace;
       white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(249,115,22,0.4);
-      border: 2px solid rgba(255,255,255,0.3);
+      box-shadow: ${isSelected ? '0 0 0 4px rgba(255,255,255,0.3), 0 2px 8px rgba(249,115,22,0.6)' : '0 2px 8px rgba(249,115,22,0.4)'};
+      border: ${isSelected ? '3px solid white' : '2px solid rgba(255,255,255,0.3)'};
+      opacity: ${isFaded ? '0.35' : '1'};
       display: flex;
       align-items: center;
       gap: 4px;
+      transition: opacity 0.3s, box-shadow 0.3s;
     ">🏭 ${code}</div>`,
     iconSize: [70, 28],
     iconAnchor: [35, 14],
   });
 
 export const IUMarker: React.FC<Props> = ({ location }) => {
-  const setSelectedNode = useAppStore((s) => s.setSelectedNode);
+  const { selectedNodeCode, setSelectedNodeCode, setSelectedNode } = useAppStore();
+
+  const isSelected = selectedNodeCode === location.code;
+  const isFaded = selectedNodeCode !== null && !isSelected;
+  const icon = useMemo(() => createIUIcon(location.code, isSelected, isFaded), [location.code, isSelected, isFaded]);
+
+  const handleClick = () => {
+    if (isSelected) {
+      setSelectedNodeCode(null);
+    } else {
+      setSelectedNodeCode(location.code);
+    }
+    setSelectedNode(location);
+  };
 
   return (
     <Marker
       position={[location.latitude, location.longitude]}
-      icon={iuIcon(location.code)}
-      eventHandlers={{
-        click: () => setSelectedNode(location),
-      }}
+      icon={icon}
+      eventHandlers={{ click: handleClick }}
     >
       <Popup maxWidth={380} className="custom-popup">
         <NodePopup location={location} />
