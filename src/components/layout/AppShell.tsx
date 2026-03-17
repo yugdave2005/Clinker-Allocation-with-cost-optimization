@@ -14,6 +14,27 @@ import { DollarSign, Factory, Truck, Package, TrendingDown } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Dashboard KPI Card subcomponent
+const CustomBarTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  const data = payload[0].payload;
+  const { color } = data;
+  return (
+    <div style={{
+      background: '#0f172a',
+      border: '1px solid #334155',
+      borderRadius: 8,
+      padding: '8px 14px',
+    }}>
+      <p style={{ color, fontWeight: 600, margin: 0, fontSize: 13 }}>
+        {label}
+      </p>
+      <p style={{ color: '#f1f5f9', margin: '2px 0 0', fontSize: 13 }}>
+        Volume: {formatNumber(payload[0].value)} MT
+      </p>
+    </div>
+  );
+};
+
 const KPICard: React.FC<{ title: string; value: number | null; total: number | null; icon: React.ReactNode; color: string }> = ({
   title, value, total, icon, color,
 }) => {
@@ -133,8 +154,7 @@ export const AppShell: React.FC = () => {
                                 <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                                 <Tooltip 
                                   cursor={{ fill: '#334155', opacity: 0.4 }}
-                                  contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '13px' }}
-                                  formatter={(v: number) => [`${formatNumber(v)} MT`, 'Volume']}
+                                  content={<CustomBarTooltip />}
                                 />
                                 <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={80}>
                                   {data.map((entry, index) => (
